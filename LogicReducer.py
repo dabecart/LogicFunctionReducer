@@ -13,7 +13,7 @@
 # This project is licensed under the MIT License - see the LICENSE file for details.
 # **************************************************************************************************
 
-import shlex, os, subprocess, sys
+import shlex, os, subprocess
 import argparse
 
 # Verifies if the provided filepath is a valid, readable file.
@@ -84,7 +84,12 @@ def main():
                     "algebraic expression. Inputs are labeled a to z, outputs Q0 to Q9, from left\n"
                     "to right.",
         epilog="By @dabecart, 2024.")
-    parser.add_argument('file', type=str, help='The path to the text file containing the truth table.')
+    parser.add_argument('-v', '--verbose', action='store_true', 
+                        help='Verbose mode displays more info on the process.')
+    parser.add_argument('-c', '--colored', action='store_true', 
+                        help='Negated terms shown in red, non-negated in green.')
+    parser.add_argument('file', type=str, 
+                        help='The path to the text file containing the truth table.')
     
     args = parser.parse_args()
     if not verifyFile(args.file):
@@ -122,10 +127,14 @@ def main():
             
             mstr = str(m).replace(" ", "")
             dstr = str(d).replace(" ", "")
+            optionalArgs = ""
+            if args.verbose: optionalArgs += "-v "
+            if args.colored: optionalArgs += "-c"
+
             if os.name == 'nt':
-                executeCommand(f"petrick.exe {inputCount} {mstr} {dstr}", cwd)
+                executeCommand(f"petrick.exe {optionalArgs} {inputCount} {mstr} {dstr}", cwd)
             else:
-                executeCommand(f"./petrick {inputCount} {mstr} {dstr}", cwd)
+                executeCommand(f"./petrick {optionalArgs} {inputCount} {mstr} {dstr}", cwd)
 
 if __name__ == "__main__":
     main()

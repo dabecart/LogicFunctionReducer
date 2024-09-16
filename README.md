@@ -39,19 +39,19 @@ $ python3 LogicReducer.py truth_table.txt
 
 Q0: [56, 57, 58, 59, 60, 61, 62, 63, 65, 67, 69, 71, 72, 73, 74, 75, 76, 77, 78, 79, 84, 85, 86, 87]
 DNC0: [96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127]
-Q: [acd+bcd+acg+acde]  Number of operations: 15
+Q: [a#cd+bcd+a#cg+ac#de]  Number of operations: 15(AND: 9, OR: 3, NOT: 3)
 
 Q1: [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 36, 37, 38, 39, 40, 41, 44, 45, 50, 51, 54, 55, 80, 81, 82, 83]
 DNC1: [96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127]
-Q: [bcdf+abc+bcde+bcdf+acde]  Number of operations: 27
+Q: [b#cd#f+#a#bc+b#c#de+bc#df+ac#d#e]  Number of operations: 27(AND: 17, OR: 5, NOT: 10)
 
 Q2: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 44, 45, 50, 51, 54, 55, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87]
 DNC2: [96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127]
-Q: [bcd+bcd+bcf+bdf]  Number of operations: 18
+Q: [#b#cd+#bc#d+b#c#f+b#df]  Number of operations: 18(AND: 8, OR: 3, NOT: 7)
 
 Q3: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31, 50, 51, 54, 55, 65, 67, 69, 71, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95]
 DNC3: [96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127]
-Q: [ace+bcdf+abc+bcd+acdg]  Number of operations: 23
+Q: [ace+bc#df+#a#b#c+#bcd+a#c#dg]  Number of operations: 23(AND: 14, OR: 5, NOT: 8)
 ```
 
 ## How to run
@@ -92,6 +92,9 @@ $ g++ -o petrick petrick.cpp
 ```
 
 I recommend Windows users to use [MSYS2](https://www.msys2.org/) for the compilation toolchain. Follow [this guide](https://code.visualstudio.com/docs/cpp/config-mingw) for the installation with VSCode.
+
+## Known limitations
+- On the "number of operations" value of the result the previous operations aren't reused. That is, if there are two `#a` in the output, they'll count as two separated operations.
 
 ## License
 

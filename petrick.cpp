@@ -20,7 +20,8 @@
 
 using namespace std;
 
-// #define VERBOSE
+bool VERBOSE = false;
+bool COLORED = false;
 
 typedef struct Minterm{
   int val;
@@ -183,13 +184,21 @@ typedef struct Implicant {
     for(;functionBitSize >= 0; functionBitSize--){
       if((commonBitsMask.val>>functionBitSize)&0x01){
         if((mins[0].val>>functionBitSize)&0x01){
-          cout << "\e[0;32m";
-          cout << out;
-          cout << "\e[0m";
+          if(COLORED){
+            cout << "\e[0;32m";
+            cout << out;
+            cout << "\e[0m";
+          }else{
+            cout << out;
+          }
         }else{
-          cout << "\e[0;31m";
-          cout << out;
-          cout << "\e[0m";
+          if(COLORED){
+            cout << "\e[0;31m";
+            cout << out;
+            cout << "\e[0m";
+          }else{
+            cout << "#" << out;
+          }
         }
       }
       out++;
@@ -197,16 +206,21 @@ typedef struct Implicant {
   }
 
   // Number of logic gates or operations that are needed to define this implicant.
-  int getOperationCount(int functionBitSize){
-    // Start on -1 as if there are three members being multiplied, we will do two multiplications.
+  int getOperationCount(int functionBitSize, int* andCount, int* notCount){
+    // Start on -1: if there are three members being multiplied, we will do two multiplications.
     int opCount = -1;
+    (*andCount)--;
+    
     for(int i = 0; i < functionBitSize; i++){
       // Only the bits that are common are used to calculate the number of operations.
       if((commonBitsMask.val>>i)&0x01){
         opCount++; // Multiplication gate.
-        // If the value is negated, we need to add a NOT gate.
+        (*andCount)++;
+
         if(!((mins[0].val>>i)&0x01)){
+          // The value is negated, we need to add a NOT gate.
           opCount++;
+          (*notCount)++;
         }
       }
     }
@@ -421,20 +435,30 @@ public:
     return !((*this)==other);
   }
 
-  int getOperationCount(int functionBitSize){
+  int getOperationCount__(int functionBitSize, int* andCount, int* orCount, int* notCount){
     if(imp == 0){
       int opers = operators.size() - 1; // Number of OR operations.
+      (*orCount) += opers;
+
       for(ImplicantOperation ops : operators){
-        opers += ops.getOperationCount(functionBitSize); // Number of AND and NOT operations.
+        opers += ops.getOperationCount__(functionBitSize, andCount, orCount, notCount); // Number of AND and NOT operations.
       }
       return opers;
     }else{
-      return imp->getOperationCount(functionBitSize); // Number of AND and NOT operations.
+      return imp->getOperationCount(functionBitSize, andCount, notCount); // Number of AND and NOT operations.
     }
   }
 
+  int getOperationCount(int functionBitSize, int* andCount, int* orCount, int* notCount){
+    *andCount = 0;
+    *orCount = 0;
+    *notCount = 0;
+    return getOperationCount__(functionBitSize, andCount, orCount, notCount);
+  }
+
   void print(){
-  #ifdef VERBOSE
+    if(!VERBOSE) return;
+
     if(imp){
       imp->print();
     }else{
@@ -448,7 +472,6 @@ public:
       }
       cout << "]";
     }
-  #endif
   }
 
   void printAlgebraic(int functionBitSize){
@@ -504,9 +527,9 @@ typedef struct Function{
   void reduce(){
     calculateImplicants();
     removeNonEssentialImplicants();
-    #ifdef VERBOSE
+    if(VERBOSE){
       nameImplicants();
-    #endif
+    }
     petrick();
   }
 
@@ -570,29 +593,31 @@ typedef struct Function{
       }
       sum.print();
       mult = mult * sum;
-#ifdef VERBOSE
-      cout<<endl;
-      mult.print();
-      cout<<endl<<"****************"<<endl;
-#endif      
+      if(VERBOSE){
+        cout<<endl;
+        mult.print();
+        cout<<endl<<"****************"<<endl;
+      }
       mult.levelParenthesis();
       // Simplify till no changes are made.
       while(mult.applySumAbsortion()){}
     }
 
-#ifdef VERBOSE
-    mult.print();
-    cout << "   SIZE:" << mult.operators.size() << endl;
-#endif
+    if(VERBOSE){
+      mult.print();
+      cout << "   SIZE:" << mult.operators.size() << endl;
+    }
 
     cout << this->funcName << ": ";
     // Select the term with the implicant with the least minterms if it is a sum.
     int leastOperationCount;
+    // Count of the individual gates.
+    int andCount, orCount, notCount;
     if(mult.type == IMPLICANT_SUM){
-      leastOperationCount = mult.operators[0].getOperationCount(numInputs);
+      leastOperationCount = mult.operators[0].getOperationCount(numInputs, &andCount, &orCount, &notCount);
       int leastOperationIndex = 0;
       for(int i = 1; i < mult.operators.size(); i++){
-        int thisOpCount = mult.operators[i].getOperationCount(numInputs); 
+        int thisOpCount = mult.operators[i].getOperationCount(numInputs, &andCount, &orCount, &notCount);
         if(thisOpCount < leastOperationCount){
           leastOperationCount = thisOpCount;
           leastOperationIndex = i;
@@ -600,11 +625,12 @@ typedef struct Function{
       }
       mult.operators[leastOperationIndex].printAlgebraic(numInputs);
     }else{
-      leastOperationCount = mult.getOperationCount(numInputs);
+      leastOperationCount = mult.getOperationCount(numInputs, &andCount, &orCount, &notCount);
       mult.printAlgebraic(numInputs);
     }
 
-    cout << "  Number of operations: " << leastOperationCount << endl;
+    cout << "  Number of operations: " << leastOperationCount <<
+            "(AND: " << andCount << ", OR: " << orCount << ", NOT: " << notCount << ")" << endl;
   }
 
   void calculateImplicants(){
@@ -617,7 +643,7 @@ typedef struct Function{
     // Group the implicants. Max implicant group has the size of the number of bits (inputs of function).
     int previousImplicantsAddedCount = imps.size();
     for(int impSize = 0; impSize < numInputs; impSize++){
-      // Stores the indeces of the implicants that have been combined so that after this iteration, they are marked as no essential
+      // Stores the indexes of the implicants that have been combined so that after this iteration, they are marked as no essential
       // as they have been 'reduced' to other implicant.
       vector<int> impIndexCombined;
       // Number of new implicants in this loop iteration. This is a simple optimization to reduce steps in the inner loop.
@@ -693,9 +719,12 @@ typedef struct Function{
 
 // Function to display the help menu
 void displayHelp() {
-    cout << "Usage: ./petrick <numInputs> [<minterms>] [<dncs>]\n";
-    cout << "Example: ./program 3 [1,2,3] [4,5,6]\n\n";
+    cout << "Usage: ./petrick [-hvc]<numInputs> [<minterms>] [<dncs>]\n";
+    cout << "Example: ./petrick 3 [1,2,3] [4,5,6]\n\n";
     cout << "Arguments:\n";
+    cout << "-h  --help   : Display this help menu.\n";
+    cout << "-v  --verbose: Verbose mode displays more info on the process.\n";
+    cout << "-c  --colored: Negated terms shown in red, non-negated in green.\n";
     cout << "<numInputs>  : The number of inputs of the logic function.\n";
     cout << "[<minterms>] : The minterms of the function. Must be a comma-separated list of\n";
     cout << "               numbers enclosed in [].\n";
@@ -729,31 +758,47 @@ Minterms parseArrayToMinterms(const string& arrayStr) {
 
 int main(int argc, char* argv[]){
     // Check if help is requested.
-    if (argc == 2 && (std::string(argv[1]) == "--help" || std::string(argv[1]) == "-h")) {
+    if (argc == 2 && (string(argv[1]) == "--help" || string(argv[1]) == "-h")) {
         displayHelp();
         return 0;
     }
 
-    if (argc != 4) {
-        std::cerr << "Error: Invalid number of arguments.\n";
+    int processedArgs = 0;
+    // Verbose mode.
+    if(argc > 4 && (string(argv[1]) == "-v" || string(argv[2]) == "-v" ||
+       string(argv[1]) == "--verbose" || string(argv[2]) == "--verbose")) {
+      VERBOSE = true;
+      processedArgs++;
+    }
+
+    // Color outputs.
+    if(argc > 4 && (string(argv[1]) == "-c" || string(argv[2]) == "-c" || 
+       string(argv[1]) == "--colored" || string(argv[2]) == "--colored")) {
+      COLORED = true;
+      processedArgs++;
+    }
+
+    if (argc != (4+processedArgs)) {
+        cerr << "Error: Invalid number of arguments.\n";
         displayHelp();
-        return 1;
+        return -1;
     }
     // Parse the first argument.
     int numberOfInputs;
     try {
-        numberOfInputs = stoi(argv[1]); 
+        numberOfInputs = stoi(argv[1+processedArgs]); 
     } catch (...) {
-        std::cerr << "Error: The first argument must be a valid number.\n";
-        return 1;
+        cerr << "Error: The first argument must be a valid number.\n";
+        return -1;
     }
 
     // Parse the second and third arguments as arrays.
-    Minterms minterms = parseArrayToMinterms(argv[2]);
-    Minterms dnc = parseArrayToMinterms(argv[3]);
+    Minterms minterms = parseArrayToMinterms(argv[2+processedArgs]);
+    Minterms dnc = parseArrayToMinterms(argv[3+processedArgs]);
 
     // Generate function, reduce and print the results.
     Function func = Function(minterms, dnc, numberOfInputs, "Q");
     func.reduce();
 
+    return 0;
 }
