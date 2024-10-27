@@ -112,9 +112,10 @@ def main():
         for line in lines:
             line = line.split("|")
 
-            inputs = fromRowToNumbers(line[0].strip())
+            inputs: list[int] = fromRowToNumbers(line[0].strip())
+            
 
-            outputs = line[1].strip().split(' ')
+            outputs: list[str] = line[1].strip().split(' ')
             for index, out in enumerate(outputs):
                 if out == '1':
                     minterms[index].extend(inputs)

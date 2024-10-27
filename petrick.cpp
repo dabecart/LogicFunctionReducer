@@ -796,6 +796,11 @@ int main(int argc, char* argv[]){
     Minterms minterms = parseArrayToMinterms(argv[2+processedArgs]);
     Minterms dnc = parseArrayToMinterms(argv[3+processedArgs]);
 
+    if(minterms.size() == 0){
+      cout << "Q: 0" << endl;
+      return 0;
+    }
+
     // Generate function, reduce and print the results.
     Function func = Function(minterms, dnc, numberOfInputs, "Q");
     func.reduce();
